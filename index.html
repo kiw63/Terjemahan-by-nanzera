@@ -1,0 +1,1056 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7f5f1">
+  <meta name="description" content="Pembaca PDF dengan terjemahan per halaman, dukungan teks China, Indonesia, Inggris, dan OCR untuk PDF hasil scan.">
+  <title>LinguaShelf — Pembaca PDF Terjemahan</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: light-dark(#f5f4f0, #15151b);
+      --surface: light-dark(#ffffff, #202029);
+      --surface-2: light-dark(#f9f8f5, #292934);
+      --text: light-dark(#23232a, #f2f0f8);
+      --muted: light-dark(#74737e, #aaa8b8);
+      --border: light-dark(#e6e3e0, #3a3946);
+      --primary: light-dark(#6554d9, #a69aff);
+      --primary-contrast: light-dark(#ffffff, #171425);
+      --primary-soft: light-dark(#efedff, #302b50);
+      --green: light-dark(#20785b, #80d7b4);
+      --red: light-dark(#b93e4b, #ff9ca6);
+      --shadow: 0 18px 50px rgba(39, 34, 76, .08);
+      --reader-size: 17px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; background: var(--bg); color: var(--text); font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+    .app { min-height: 100vh; background: var(--bg); }
+    .topbar { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 15px clamp(16px, 4vw, 48px); border-bottom: 1px solid var(--border); background: var(--bg); }
+    .brand { display: flex; align-items: center; gap: 11px; min-width: 0; }
+    .brand-mark { display: grid; place-items: center; width: 42px; height: 42px; flex: 0 0 auto; border-radius: 14px; background: var(--primary); color: var(--primary-contrast); font-size: 21px; font-weight: 800; box-shadow: 0 8px 20px rgba(101,84,217,.22); }
+    .brand-name { font-size: 18px; font-weight: 800; letter-spacing: -.5px; }
+    .brand-sub { color: var(--muted); font-size: 11px; margin-top: 2px; }
+    .top-right { display: flex; align-items: center; gap: 8px; }
+    .top-pill { padding: 7px 10px; border: 1px solid var(--border); border-radius: 999px; font-size: 12px; color: var(--muted); white-space: nowrap; }
+    .wrap { width: min(1160px, calc(100% - 32px)); margin: 0 auto; }
+    .hero { padding: clamp(26px, 4vw, 48px) 0 22px; }
+    .eyebrow { display: inline-flex; align-items: center; gap: 7px; color: var(--primary); font-size: 12px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+    .eyebrow-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+    h1 { max-width: 760px; margin: 13px 0 10px; font-size: clamp(30px, 5.2vw, 50px); line-height: 1.07; letter-spacing: -1.8px; }
+    .hero p { max-width: 670px; color: var(--muted); line-height: 1.65; font-size: 15px; margin: 0; }
+    .setup-grid { display: grid; grid-template-columns: minmax(0, 1.12fr) minmax(300px, .88fr); gap: 16px; align-items: stretch; margin-bottom: 16px; }
+    .card { border: 1px solid var(--border); border-radius: 20px; background: var(--surface); box-shadow: var(--shadow); }
+    .upload-card { padding: 22px; display: flex; flex-direction: column; }
+    .section-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
+    .section-heading h2 { margin: 0 0 5px; font-size: 16px; letter-spacing: -.3px; }
+    .section-heading p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.55; }
+    .step { color: var(--muted); font-size: 11px; border: 1px solid var(--border); border-radius: 100px; padding: 5px 9px; white-space: nowrap; }
+    .dropzone { display: flex; flex: 1; min-height: 155px; align-items: center; justify-content: center; flex-direction: column; text-align: center; padding: 20px; border: 1.5px dashed light-dark(#c7c0ed, #5a537f); border-radius: 16px; background: var(--surface-2); transition: border-color .15s, background .15s; }
+    .dropzone.dragover { border-color: var(--primary); background: var(--primary-soft); }
+    .upload-icon { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 14px; background: var(--primary-soft); color: var(--primary); font-size: 23px; margin-bottom: 10px; }
+    .dropzone strong { font-size: 14px; }
+    .dropzone span { color: var(--muted); font-size: 12px; margin-top: 5px; }
+    .file-picker { margin-top: 14px; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 42px; padding: 10px 15px; border: 1px solid var(--border); border-radius: 12px; color: var(--text); background: var(--surface); font-size: 13px; font-weight: 750; transition: transform .12s, border-color .12s, background .12s; }
+    .btn:hover:not(:disabled) { border-color: var(--primary); transform: translateY(-1px); }
+    .btn-primary { border-color: var(--primary); background: var(--primary); color: var(--primary-contrast); }
+    .btn-primary:hover:not(:disabled) { filter: brightness(1.04); }
+    .btn-soft { background: var(--primary-soft); color: var(--primary); border-color: transparent; }
+    .btn-small { min-height: 34px; padding: 7px 10px; border-radius: 10px; font-size: 12px; }
+    .hidden { display: none !important; }
+    .file-info { display: flex; align-items: center; gap: 10px; margin-top: 14px; padding: 11px 12px; border-radius: 12px; background: var(--surface-2); }
+    .file-type { display: grid; place-items: center; height: 38px; width: 38px; flex: 0 0 auto; border-radius: 11px; background: #fff0ef; color: #bd4c53; font-size: 10px; font-weight: 900; }
+    .file-info-main { min-width: 0; flex: 1; }
+    .file-info-main strong { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+    .file-info-main small { display: block; color: var(--muted); font-size: 11px; margin-top: 3px; }
+    .settings-card { padding: 22px; }
+    .form-grid { display: grid; grid-template-columns: 1fr 34px 1fr; gap: 9px; align-items: end; }
+    .field label { display: block; margin-bottom: 7px; color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+    .field select, .field input { display: block; width: 100%; min-height: 43px; padding: 10px 11px; color: var(--text); border: 1px solid var(--border); border-radius: 11px; background: var(--surface); outline: none; }
+    .field select:focus, .field input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+    .swap-btn { width: 34px; height: 43px; padding: 0; border: 1px solid var(--border); border-radius: 11px; color: var(--primary); background: var(--surface-2); font-size: 17px; }
+    .provider-select { margin-top: 15px; }
+    .help-note { display: flex; gap: 9px; align-items: flex-start; margin-top: 13px; padding: 11px 12px; border-radius: 12px; background: var(--surface-2); color: var(--muted); font-size: 11px; line-height: 1.55; }
+    .help-note b { color: var(--text); }
+    .google-key { margin-top: 10px; }
+    .privacy-line { margin-top: 12px; color: var(--muted); font-size: 10px; line-height: 1.5; }
+    .action-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 14px; margin-bottom: 22px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); }
+    .action-strip .primary-action { flex: 1; min-width: 210px; }
+    .progress-area { flex: 1 1 100%; min-width: 180px; padding-top: 3px; }
+    .progress-head { display: flex; gap: 12px; justify-content: space-between; margin-bottom: 7px; color: var(--muted); font-size: 11px; }
+    .progress-head strong { color: var(--text); font-weight: 700; }
+    .progress-track { height: 6px; overflow: hidden; border-radius: 99px; background: var(--border); }
+    .progress-fill { height: 100%; width: 0; border-radius: inherit; background: var(--primary); transition: width .2s; }
+    .notice { margin: 0 0 18px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 13px; color: var(--muted); background: var(--surface); font-size: 12px; line-height: 1.55; }
+    .notice.error { border-color: color-mix(in srgb, var(--red) 45%, var(--border)); color: var(--red); }
+    .notice.success { color: var(--green); }
+    .reader-section { margin-top: 8px; }
+    .reader-top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 13px; }
+    .reader-title h2 { margin: 0; font-size: 19px; letter-spacing: -.5px; }
+    .reader-title p { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
+    .reader-tools { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; }
+    .mode-switch { display: inline-flex; gap: 3px; padding: 4px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+    .mode-btn { border: 0; padding: 7px 10px; border-radius: 8px; background: transparent; color: var(--muted); font-size: 11px; font-weight: 750; }
+    .mode-btn.active { color: var(--primary); background: var(--primary-soft); }
+    .reader-layout { display: grid; grid-template-columns: 205px minmax(0, 1fr); gap: 15px; align-items: start; margin-bottom: 42px; }
+    .book-sidebar { position: sticky; top: 82px; padding: 15px; }
+    .sidebar-top { display: flex; justify-content: space-between; gap: 10px; align-items: center; padding: 0 2px 13px; border-bottom: 1px solid var(--border); }
+    .sidebar-top strong { font-size: 12px; }
+    .sidebar-top span { color: var(--muted); font-size: 10px; }
+    .page-list { display: flex; flex-direction: column; gap: 5px; max-height: 60vh; overflow: auto; padding-top: 9px; }
+    .page-nav { display: flex; gap: 9px; align-items: center; width: 100%; padding: 9px; border: 1px solid transparent; border-radius: 11px; background: transparent; color: var(--muted); text-align: left; }
+    .page-nav:hover { background: var(--surface-2); }
+    .page-nav.active { color: var(--primary); border-color: light-dark(#ded9ff, #4e467b); background: var(--primary-soft); }
+    .page-number { display: grid; place-items: center; width: 29px; height: 34px; flex: 0 0 auto; border-radius: 6px; background: var(--surface-2); border: 1px solid var(--border); color: var(--muted); font-size: 10px; font-weight: 800; }
+    .page-nav.active .page-number { color: var(--primary); border-color: transparent; background: var(--surface); }
+    .page-nav-text { min-width: 0; }
+    .page-nav-text strong { display: block; font-size: 11px; }
+    .page-nav-text small { display: block; margin-top: 3px; font-size: 10px; opacity: .8; }
+    .page-state-dot { width: 6px; height: 6px; display: inline-block; border-radius: 50%; background: var(--border); margin-right: 4px; vertical-align: middle; }
+    .page-state-dot.done { background: var(--green); }
+    .page-state-dot.working { background: var(--primary); }
+    .reader-main { min-width: 0; }
+    .page-controls { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 13px; margin-bottom: 12px; }
+    .page-controls-left, .page-controls-right { display: flex; align-items: center; gap: 7px; }
+    .page-count { min-width: 76px; color: var(--muted); text-align: center; font-size: 12px; font-weight: 750; }
+    .page-count strong { color: var(--text); }
+    .reader-page { border: 1px solid var(--border); border-radius: 18px; overflow: hidden; background: var(--surface); box-shadow: var(--shadow); }
+    .page-banner { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 14px 20px; border-bottom: 1px solid var(--border); background: var(--surface-2); }
+    .page-banner strong { font-size: 12px; }
+    .page-banner span { color: var(--muted); font-size: 10px; }
+    .page-content { padding: clamp(20px, 4vw, 40px); }
+    .translated-copy { max-width: 760px; margin: 0 auto; font-size: var(--reader-size); line-height: 1.85; overflow-wrap: anywhere; white-space: pre-wrap; }
+    .translated-copy h3 { margin: 0 0 16px; font-size: 1.35em; line-height: 1.4; }
+    .translated-copy .empty-title { color: var(--muted); font-size: 15px; font-weight: 750; }
+    .original-canvas-wrap { display: flex; justify-content: center; padding: 18px; background: light-dark(#eeece8, #17171d); border-bottom: 1px solid var(--border); overflow: auto; }
+    .original-canvas-wrap canvas { max-width: 100%; height: auto !important; background: white; box-shadow: 0 4px 22px rgba(0,0,0,.12); }
+    .page-dual { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+    .page-dual .original-column { min-width: 0; border-right: 1px solid var(--border); }
+    .page-dual .original-column .original-canvas-wrap { padding: 12px; }
+    .page-dual .translated-column { min-width: 0; }
+    .column-label { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
+    .page-dual .translated-copy { padding: 18px; font-size: calc(var(--reader-size) - 1px); }
+    .page-footer { display: flex; justify-content: space-between; gap: 12px; padding: 12px 20px; border-top: 1px solid var(--border); color: var(--muted); font-size: 10px; }
+    .empty-reader { min-height: 310px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 28px; }
+    .empty-book-icon { width: 65px; height: 65px; border-radius: 20px; display: grid; place-items: center; background: var(--primary-soft); color: var(--primary); font-size: 30px; margin-bottom: 16px; }
+    .empty-reader h3 { margin: 0 0 7px; font-size: 17px; }
+    .empty-reader p { max-width: 400px; margin: 0; color: var(--muted); font-size: 12px; line-height: 1.7; }
+    .reader-footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; color: var(--muted); font-size: 10px; padding: 0 2px 24px; }
+    .muted { color: var(--muted); }
+    .toast { position: fixed; z-index: 50; right: 16px; bottom: 16px; max-width: min(440px, calc(100vw - 32px)); border: 1px solid var(--border); border-radius: 13px; padding: 13px 16px; box-shadow: var(--shadow); background: var(--surface); font-size: 12px; line-height: 1.5; }
+    .toast.error { color: var(--red); }
+    .toast.success { color: var(--green); }
+    footer { padding: 22px 0 28px; border-top: 1px solid var(--border); color: var(--muted); font-size: 11px; line-height: 1.6; }
+    @media (max-width: 850px) {
+      .setup-grid { grid-template-columns: 1fr; }
+      .reader-layout { grid-template-columns: 1fr; }
+      .book-sidebar { position: static; padding: 12px; }
+      .page-list { flex-direction: row; max-height: none; overflow: auto; padding: 9px 0 0; }
+      .page-nav { min-width: 125px; }
+      .reader-layout { gap: 10px; }
+      .page-dual { grid-template-columns: 1fr; }
+      .page-dual .original-column { border-right: 0; border-bottom: 1px solid var(--border); }
+    }
+    @media (max-width: 560px) {
+      .topbar { padding: 12px 16px; }
+      .top-pill { display: none; }
+      .brand-mark { width: 38px; height: 38px; }
+      .brand-name { font-size: 16px; }
+      .wrap { width: calc(100% - 24px); }
+      h1 { letter-spacing: -1.1px; }
+      .hero p { font-size: 13px; }
+      .upload-card, .settings-card { padding: 16px; }
+      .form-grid { grid-template-columns: minmax(0,1fr) 34px minmax(0,1fr); gap: 6px; }
+      .field select { padding: 9px 7px; font-size: 12px; }
+      .reader-top { align-items: flex-start; }
+      .reader-tools { width: 100%; }
+      .mode-switch { width: 100%; justify-content: space-between; }
+      .mode-btn { flex: 1; padding-inline: 5px; }
+      .page-controls { padding: 9px; }
+      .page-controls .btn-small { padding: 7px 8px; }
+      .page-content { padding: 19px; }
+      .page-banner { padding: 12px 14px; }
+      .action-strip { padding: 10px; }
+      .action-strip .primary-action { min-width: 100%; }
+      .action-strip > .btn { flex: 1; }
+      .reader-footer { font-size: 9px; }
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+</head>
+<body>
+<div class="app" id="appRoot">
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">文</div>
+      <div><div class="brand-name">LinguaShelf</div><div class="brand-sub">PDF reader · multilingual</div></div>
+    </div>
+    <div class="top-right"><span class="top-pill">Baca dalam bahasa kamu</span><span class="top-pill">PDF → Book</span></div>
+  </header>
+
+  <main class="wrap">
+    <section class="hero">
+      <div class="eyebrow"><span class="eyebrow-dot"></span> Pembaca buku lintas bahasa</div>
+      <h1>Satu buku.<br>Bahasa yang kamu pahami.</h1>
+      <p>Unggah PDF, pilih bahasa, lalu terjemahkan halaman demi halaman. Urutan dan nomor halaman dijaga; PDF asli tetap tersedia untuk dibandingkan.</p>
+    </section>
+
+    <section class="setup-grid" aria-label="Pengaturan dokumen dan bahasa">
+      <div class="card upload-card">
+        <div class="section-heading"><div><h2>01 · Masukkan buku PDF</h2><p>File diproses di browser kamu; tidak diunggah ke server aplikasi ini.</p></div><span class="step">PDF</span></div>
+        <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Pilih atau jatuhkan file PDF">
+          <div class="upload-icon" aria-hidden="true">↑</div>
+          <strong>Jatuhkan PDF di sini</strong>
+          <span>atau pilih file dari perangkat · disarankan di bawah 40 MB</span>
+          <input class="hidden" type="file" id="fileInput" accept="application/pdf,.pdf">
+          <button class="btn btn-primary file-picker" id="chooseFileBtn" type="button">Pilih file PDF</button>
+        </div>
+        <div id="fileInfo" class="file-info hidden">
+          <div class="file-type">PDF</div><div class="file-info-main"><strong id="fileName">—</strong><small id="fileMeta">—</small></div>
+          <button class="btn btn-small" id="removeFileBtn" type="button" title="Tutup buku">Tutup</button>
+        </div>
+      </div>
+
+      <div class="card settings-card">
+        <div class="section-heading"><div><h2>02 · Pilih bahasa</h2><p>Bahasa sumber bisa dideteksi otomatis per halaman.</p></div><span class="step">A → B</span></div>
+        <div class="form-grid">
+          <div class="field"><label for="sourceLang">Dari</label><select id="sourceLang">
+            <option value="auto" selected>Deteksi otomatis</option>
+            <option value="zh-CN">Mandarin sederhana</option><option value="zh-TW">Mandarin tradisional</option>
+            <option value="en">Inggris</option><option value="id">Indonesia</option><option value="ja">Jepang</option><option value="ko">Korea</option>
+            <option value="vi">Vietnam</option><option value="th">Thailand</option><option value="fr">Prancis</option><option value="es">Spanyol</option><option value="pt">Portugis</option><option value="ru">Rusia</option>
+          </select></div>
+          <button class="swap-btn" type="button" id="swapLangBtn" title="Tukar bahasa" aria-label="Tukar bahasa">⇄</button>
+          <div class="field"><label for="targetLang">Ke</label><select id="targetLang">
+            <option value="id" selected>Indonesia</option><option value="zh-CN">Mandarin sederhana</option><option value="zh-TW">Mandarin tradisional</option>
+            <option value="en">Inggris</option><option value="ja">Jepang</option><option value="ko">Korea</option><option value="vi">Vietnam</option><option value="th">Thailand</option><option value="fr">Prancis</option><option value="es">Spanyol</option><option value="pt">Portugis</option><option value="ru">Rusia</option>
+          </select></div>
+        </div>
+        <div class="field provider-select"><label for="provider">Mesin terjemahan</label><select id="provider"><option value="mymemory" selected>Gratis · MyMemory</option><option value="google">Google Cloud Translation · perlu API key</option></select></div>
+        <div id="googleKeyWrap" class="field google-key hidden"><label for="googleKey">Google Cloud API key</label><input type="password" id="googleKey" autocomplete="off" placeholder="Tempel API key hanya untuk sesi ini"><div class="privacy-line">Kunci tidak disimpan oleh aplikasi. Jangan menaruh key pribadi ke situs publik.</div></div>
+        <div class="help-note"><span aria-hidden="true">ⓘ</span><div><b>Catatan kualitas</b><br>Terjemahan mesin bisa keliru pada istilah teknis, nama, atau rumus. MyMemory gratis memiliki batas pemakaian. Untuk dokumen penting, bandingkan dengan PDF asli.</div></div>
+      </div>
+    </section>
+
+    <section class="action-strip" aria-label="Aksi terjemahan">
+      <button class="btn btn-primary primary-action" id="translateBtn" type="button" disabled>✦ Terjemahkan seluruh buku</button>
+      <button class="btn" id="translatePageBtn" type="button" disabled>Terjemahkan halaman ini</button>
+      <button class="btn" id="stopBtn" type="button" disabled>Hentikan</button>
+      <button class="btn" id="downloadBtn" type="button" disabled>Unduh teks .txt</button>
+      <div class="progress-area" id="progressArea" aria-live="polite">
+        <div class="progress-head"><span id="statusText">Pilih PDF untuk mulai.</span><strong id="progressPct">0%</strong></div>
+        <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+      </div>
+    </section>
+
+    <div id="notice" class="notice" role="status">Tips: PDF berisi teks lebih cepat diproses. Jika PDF hanya berupa foto/scan, gunakan OCR yang akan muncul pada halaman terkait.</div>
+
+    <section class="reader-section" aria-label="Pembaca buku">
+      <div class="reader-top">
+        <div class="reader-title"><h2 id="readerHeading">Buku kamu</h2><p id="readerSubheading">Halaman yang diterjemahkan akan muncul di sini.</p></div>
+        <div class="reader-tools">
+          <div class="mode-switch" role="group" aria-label="Mode tampilan">
+            <button class="mode-btn active" data-mode="translated" type="button">Terjemahan</button>
+            <button class="mode-btn" data-mode="both" type="button">Asli + terjemahan</button>
+            <button class="mode-btn" data-mode="original" type="button">PDF asli</button>
+          </div>
+          <button class="btn btn-small" id="fontDownBtn" type="button" aria-label="Perkecil teks">A−</button><button class="btn btn-small" id="fontUpBtn" type="button" aria-label="Perbesar teks">A+</button>
+        </div>
+      </div>
+
+      <div class="reader-layout">
+        <aside class="card book-sidebar" id="bookSidebar">
+          <div class="sidebar-top"><strong>Isi buku</strong><span id="pageTotalLabel">0 halaman</span></div>
+          <div class="page-list" id="pageList"><div class="muted" style="font-size:11px;padding:9px 4px">Halaman PDF akan tampil di sini.</div></div>
+        </aside>
+        <div class="reader-main">
+          <div class="card page-controls">
+            <div class="page-controls-left"><button class="btn btn-small" id="prevPageBtn" type="button" disabled>← Sebelumnya</button></div>
+            <div class="page-count" id="pageCount"><strong>—</strong> / —</div>
+            <div class="page-controls-right"><button class="btn btn-small" id="nextPageBtn" type="button" disabled>Berikutnya →</button></div>
+          </div>
+          <article class="reader-page" id="readerPage">
+            <div class="empty-reader"><div class="empty-book-icon">文</div><h3>Mulai dari sebuah PDF</h3><p>Pilih buku PDF di atas. LinguaShelf akan membaca teks setiap halaman, lalu kamu bisa menerjemahkannya dan tetap memeriksa versi asli.</p></div>
+          </article>
+        </div>
+      </div>
+      <div class="reader-footer"><span>PDF diproses pada perangkat; teks yang akan diterjemahkan dikirim ke penyedia terjemahan yang dipilih.</span><span>LinguaShelf · Browser reader</span></div>
+    </section>
+  </main>
+
+  <footer><div class="wrap">LinguaShelf membantu membaca, bukan menggantikan dokumen sumber. Tata letak teks terjemahan dapat berbeda karena panjang bahasa berubah; halaman PDF asli tetap dapat dilihat. Dokumen scan membutuhkan OCR dan hasilnya bergantung pada kualitas gambar.</div></footer>
+</div>
+<div id="toast" class="toast hidden" role="status"></div>
+
+<script>
+(() => {
+  'use strict';
+
+  const $ = (id) => document.getElementById(id);
+  const refs = {
+    fileInput: $('fileInput'), dropzone: $('dropzone'), chooseFileBtn: $('chooseFileBtn'), fileInfo: $('fileInfo'), fileName: $('fileName'), fileMeta: $('fileMeta'), removeFileBtn: $('removeFileBtn'),
+    sourceLang: $('sourceLang'), targetLang: $('targetLang'), swapLangBtn: $('swapLangBtn'), provider: $('provider'), googleKeyWrap: $('googleKeyWrap'), googleKey: $('googleKey'),
+    translateBtn: $('translateBtn'), translatePageBtn: $('translatePageBtn'), stopBtn: $('stopBtn'), downloadBtn: $('downloadBtn'), statusText: $('statusText'), progressPct: $('progressPct'), progressFill: $('progressFill'), notice: $('notice'),
+    readerHeading: $('readerHeading'), readerSubheading: $('readerSubheading'), pageList: $('pageList'), pageTotalLabel: $('pageTotalLabel'), pageCount: $('pageCount'), prevPageBtn: $('prevPageBtn'), nextPageBtn: $('nextPageBtn'), readerPage: $('readerPage'), toast: $('toast'),
+    fontDownBtn: $('fontDownBtn'), fontUpBtn: $('fontUpBtn')
+  };
+
+  const state = {
+    pdf: null,
+    fileName: '',
+    fileSize: 0,
+    pageCount: 0,
+    currentPage: 1,
+    pages: [],
+    mode: 'translated',
+    readerFontSize: 17,
+    busy: false,
+    cancelRequested: false,
+    renderTask: null,
+    toastTimer: null,
+    ocrWorker: null,
+    ocrLanguage: '',
+    textExtractionComplete: false
+  };
+
+  if (window.pdfjsLib) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  } else {
+    showNotice('Pustaka pembaca PDF tidak berhasil dimuat. Periksa koneksi internet lalu muat ulang halaman.', true);
+  }
+
+  function humanSize(bytes) {
+    if (!Number.isFinite(bytes)) return '';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  function showToast(message, kind = '', duration = 4200) {
+    refs.toast.textContent = message;
+    refs.toast.className = `toast ${kind}`.trim();
+    clearTimeout(state.toastTimer);
+    state.toastTimer = setTimeout(() => refs.toast.classList.add('hidden'), duration);
+  }
+
+  function showNotice(message, isError = false, isSuccess = false) {
+    refs.notice.textContent = message;
+    refs.notice.className = `notice${isError ? ' error' : ''}${isSuccess ? ' success' : ''}`;
+  }
+
+  function setProgress(percent, message) {
+    const safe = Math.max(0, Math.min(100, Math.round(percent)));
+    refs.progressFill.style.width = `${safe}%`;
+    refs.progressPct.textContent = `${safe}%`;
+    if (message) refs.statusText.textContent = message;
+  }
+
+  function setBusy(busy) {
+    state.busy = busy;
+    refs.translateBtn.disabled = busy || !state.pdf;
+    refs.translatePageBtn.disabled = busy || !state.pdf;
+    refs.stopBtn.disabled = !busy;
+    refs.chooseFileBtn.disabled = busy;
+    refs.fileInput.disabled = busy;
+    refs.removeFileBtn.disabled = busy;
+  }
+
+  function decodeEntities(text) {
+    const area = document.createElement('textarea');
+    area.innerHTML = String(text ?? '');
+    return area.value;
+  }
+
+  function detectLanguage(text) {
+    if (/[\u3040-\u30ff]/u.test(text)) return 'ja';
+    if (/[\uac00-\ud7af]/u.test(text)) return 'ko';
+    if (/[\u3400-\u9fff]/u.test(text)) return 'zh-CN';
+    if (/[\u0400-\u04ff]/u.test(text)) return 'ru';
+    if (/[\u0e00-\u0e7f]/u.test(text)) return 'th';
+    if (/[\u00c0-\u024f]/u.test(text)) {
+      if (/\b(của|và|không|được|người|trong)\b/i.test(text)) return 'vi';
+      if (/\b(le|la|les|des|est|une|dans|pour)\b/i.test(text)) return 'fr';
+      if (/\b(el|la|los|las|una|para|con)\b/i.test(text)) return 'es';
+    }
+    return 'en';
+  }
+
+  function getSourceForText(text) {
+    const selected = refs.sourceLang.value;
+    return selected === 'auto' ? detectLanguage(text) : selected;
+  }
+
+  function langName(code) {
+    const names = { 'zh-CN': 'Mandarin sederhana', 'zh-TW': 'Mandarin tradisional', en: 'Inggris', id: 'Indonesia', ja: 'Jepang', ko: 'Korea', vi: 'Vietnam', th: 'Thailand', fr: 'Prancis', es: 'Spanyol', pt: 'Portugis', ru: 'Rusia' };
+    return names[code] || code;
+  }
+
+  function textItemsToParagraphs(items) {
+    const valid = items.filter(item => item && typeof item.str === 'string' && item.str.trim().length > 0);
+    if (!valid.length) return '';
+    const rows = [];
+    for (const item of valid) {
+      const transform = item.transform || [1, 0, 0, 1, 0, 0];
+      const x = Number(transform[4]) || 0;
+      const y = Number(transform[5]) || 0;
+      const fontSize = Math.max(4, Math.abs(Number(transform[3]) || Number(item.height) || 10));
+      let row = rows[rows.length - 1];
+      if (!row || Math.abs(row.y - y) > Math.max(2, fontSize * 0.45)) {
+        row = { y, fontSize, items: [] };
+        rows.push(row);
+      }
+      row.items.push({ item, x, y, fontSize });
+    }
+    const lines = rows.map(row => {
+      row.items.sort((a, b) => a.x - b.x);
+      let text = '';
+      let previousEnd = null;
+      for (const part of row.items) {
+        const value = part.item.str.replace(/\s+/g, ' ').trim();
+        if (!value) continue;
+        if (text && previousEnd !== null) {
+          const gap = part.x - previousEnd;
+          const gapLimit = Math.max(1.5, part.fontSize * 0.23);
+          if (gap > gapLimit && !/[\u3400-\u9fff]$/u.test(text) && !/^[,.;:!?，。！？；：、]/u.test(value)) text += ' ';
+        }
+        text += value;
+        const itemWidth = Number(part.item.width) || part.fontSize * value.length * 0.5;
+        previousEnd = part.x + itemWidth;
+      }
+      return { text: text.trim(), y: row.y, fontSize: row.fontSize };
+    }).filter(row => row.text);
+    if (!lines.length) return '';
+    let result = lines[0].text;
+    for (let i = 1; i < lines.length; i++) {
+      const previous = lines[i - 1];
+      const current = lines[i];
+      const verticalGap = Math.abs(previous.y - current.y);
+      const reference = Math.max(8, (previous.fontSize + current.fontSize) / 2);
+      if (verticalGap > reference * 1.65) result += '\n\n';
+      else result += ' ';
+      result += current.text;
+    }
+    return result.replace(/[ \t]+\n/g, '\n').replace(/\n[ \t]+/g, '\n').trim();
+  }
+
+  async function loadPDF(file) {
+    if (state.busy) return;
+    if (!file || (!file.type.includes('pdf') && !file.name.toLowerCase().endsWith('.pdf'))) {
+      showToast('Pilih file PDF yang valid.', 'error');
+      return;
+    }
+    if (!window.pdfjsLib) {
+      showToast('Pembaca PDF belum dimuat. Periksa internet dan muat ulang website.', 'error', 6000);
+      return;
+    }
+    if (file.size > 80 * 1024 * 1024) {
+      showToast('File terlalu besar untuk browser ini. Coba PDF di bawah 80 MB.', 'error', 6000);
+      return;
+    }
+    closeCurrentBook();
+    setBusy(true);
+    showNotice('Membuka PDF dan membaca teks tiap halaman…');
+    setProgress(0, 'Membuka file PDF…');
+    try {
+      const buffer = await file.arrayBuffer();
+      const task = pdfjsLib.getDocument({ data: new Uint8Array(buffer), useSystemFonts: true });
+      state.pdf = await task.promise;
+      state.fileName = file.name;
+      state.fileSize = file.size;
+      state.pageCount = state.pdf.numPages;
+      state.currentPage = 1;
+      state.pages = Array.from({ length: state.pageCount }, (_, i) => ({ number: i + 1, originalText: '', translatedText: '', translationState: 'pending', extractionState: 'pending', sourceLanguage: '', error: '' }));
+      refs.fileInfo.classList.remove('hidden');
+      refs.fileName.textContent = file.name;
+      refs.fileMeta.textContent = `${humanSize(file.size)} · ${state.pageCount} halaman`;
+      refs.readerHeading.textContent = file.name.replace(/\.pdf$/i, '');
+      refs.readerSubheading.textContent = `${state.pageCount} halaman · urutan PDF dipertahankan`;
+      refs.pageTotalLabel.textContent = `${state.pageCount} halaman`;
+      setBusy(false);
+      refs.translateBtn.disabled = false;
+      refs.translatePageBtn.disabled = false;
+      refs.downloadBtn.disabled = true;
+      renderPageList();
+      await extractAllText();
+      await renderCurrentPage();
+      setBusy(false);
+      showNotice('PDF sudah dibuka. Pilih “Terjemahkan seluruh buku” untuk mulai. File tetap berada di browser; teks dikirim ke layanan terjemahan hanya saat kamu memulai terjemahan.', false, true);
+      setProgress(0, 'PDF siap diterjemahkan.');
+    } catch (error) {
+      console.error(error);
+      closeCurrentBook();
+      setBusy(false);
+      const message = error?.name === 'PasswordException' ? 'PDF ini dilindungi kata sandi. Buka kuncinya terlebih dahulu lalu unggah lagi.' : `PDF gagal dibuka: ${error?.message || 'format tidak didukung atau file rusak.'}`;
+      showNotice(message, true);
+      showToast(message, 'error', 6500);
+      setProgress(0, 'Gagal membuka PDF.');
+    }
+  }
+
+  async function extractAllText() {
+    if (!state.pdf) return;
+    for (let i = 1; i <= state.pageCount; i++) {
+      const pageData = state.pages[i - 1];
+      try {
+        const page = await state.pdf.getPage(i);
+        const content = await page.getTextContent();
+        pageData.originalText = textItemsToParagraphs(content.items || []);
+        pageData.extractionState = pageData.originalText.trim() ? 'text' : 'no-text';
+      } catch (error) {
+        pageData.extractionState = 'error';
+        pageData.error = error?.message || 'Gagal membaca halaman';
+      }
+      setProgress((i / state.pageCount) * 12, `Membaca teks PDF: halaman ${i} dari ${state.pageCount}…`);
+      if (i % 12 === 0) renderPageList();
+    }
+    state.textExtractionComplete = true;
+    renderPageList();
+  }
+
+  function closeCurrentBook() {
+    if (state.pdf && typeof state.pdf.destroy === 'function') {
+      try { state.pdf.destroy(); } catch (_) { /* noop */ }
+    }
+    state.pdf = null;
+    state.fileName = '';
+    state.fileSize = 0;
+    state.pageCount = 0;
+    state.currentPage = 1;
+    state.pages = [];
+    state.textExtractionComplete = false;
+    refs.fileInfo.classList.add('hidden');
+    refs.translateBtn.disabled = true;
+    refs.translatePageBtn.disabled = true;
+    refs.downloadBtn.disabled = true;
+    refs.prevPageBtn.disabled = true;
+    refs.nextPageBtn.disabled = true;
+    refs.pageList.innerHTML = '<div class="muted" style="font-size:11px;padding:9px 4px">Halaman PDF akan tampil di sini.</div>';
+    refs.readerHeading.textContent = 'Buku kamu';
+    refs.readerSubheading.textContent = 'Halaman yang diterjemahkan akan muncul di sini.';
+    refs.pageTotalLabel.textContent = '0 halaman';
+    refs.pageCount.innerHTML = '<strong>—</strong> / —';
+    refs.readerPage.innerHTML = '<div class="empty-reader"><div class="empty-book-icon">文</div><h3>Mulai dari sebuah PDF</h3><p>Pilih buku PDF di atas. LinguaShelf akan membaca teks setiap halaman, lalu kamu bisa menerjemahkannya dan tetap memeriksa versi asli.</p></div>';
+    setProgress(0, 'Pilih PDF untuk mulai.');
+  }
+
+  function renderPageList() {
+    if (!state.pages.length) return;
+    const fragment = document.createDocumentFragment();
+    state.pages.forEach((page, index) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = `page-nav${page.number === state.currentPage ? ' active' : ''}`;
+      button.setAttribute('aria-label', `Buka halaman ${page.number}`);
+      const num = document.createElement('span');
+      num.className = 'page-number';
+      num.textContent = String(page.number).padStart(2, '0');
+      const meta = document.createElement('span');
+      meta.className = 'page-nav-text';
+      const title = document.createElement('strong');
+      title.textContent = `Halaman ${page.number}`;
+      const sub = document.createElement('small');
+      const isDone = page.translationState === 'done';
+      const isWork = page.translationState === 'working';
+      const dot = document.createElement('span');
+      dot.className = `page-state-dot${isDone ? ' done' : isWork ? ' working' : ''}`;
+      sub.append(dot, document.createTextNode(isDone ? 'Selesai' : page.extractionState === 'no-text' ? 'Scan / gambar' : page.translationState === 'error' ? 'Perlu dicoba lagi' : 'Belum diterjemahkan'));
+      meta.append(title, sub);
+      button.append(num, meta);
+      button.addEventListener('click', () => goToPage(index + 1));
+      fragment.append(button);
+    });
+    refs.pageList.replaceChildren(fragment);
+    refs.pageTotalLabel.textContent = `${state.pageCount} halaman`;
+  }
+
+  async function goToPage(pageNum) {
+    if (!state.pdf || !Number.isFinite(pageNum)) return;
+    state.currentPage = Math.max(1, Math.min(state.pageCount, pageNum));
+    renderPageList();
+    await renderCurrentPage();
+  }
+
+  function createElement(tag, className, text) {
+    const el = document.createElement(tag);
+    if (className) el.className = className;
+    if (text !== undefined) el.textContent = text;
+    return el;
+  }
+
+  async function renderOriginalCanvas(target, pageNum) {
+    if (!state.pdf) return;
+    const page = await state.pdf.getPage(pageNum);
+    const baseViewport = page.getViewport({ scale: 1 });
+    const maxWidth = Math.max(260, Math.min(target.clientWidth || 660, window.innerWidth < 600 ? window.innerWidth - 70 : 790));
+    const scale = Math.min(1.65, maxWidth / baseViewport.width);
+    const viewport = page.getViewport({ scale });
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d', { alpha: false });
+    const ratio = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.floor(viewport.width * ratio);
+    canvas.height = Math.floor(viewport.height * ratio);
+    canvas.style.width = `${Math.floor(viewport.width)}px`;
+    canvas.style.height = `${Math.floor(viewport.height)}px`;
+    const renderContext = { canvasContext: context, viewport, transform: ratio !== 1 ? [ratio, 0, 0, ratio, 0, 0] : null, background: '#ffffff' };
+    if (state.renderTask && typeof state.renderTask.cancel === 'function') {
+      try { state.renderTask.cancel(); } catch (_) { /* noop */ }
+    }
+    state.renderTask = page.render(renderContext);
+    try { await state.renderTask.promise; } catch (error) { if (error?.name !== 'RenderingCancelledException') throw error; }
+    target.replaceChildren(canvas);
+  }
+
+  async function renderCurrentPage() {
+    if (!state.pdf || !state.pages.length) return;
+    const pageData = state.pages[state.currentPage - 1];
+    refs.pageCount.innerHTML = `<strong>${state.currentPage}</strong> / ${state.pageCount}`;
+    refs.prevPageBtn.disabled = state.currentPage <= 1;
+    refs.nextPageBtn.disabled = state.currentPage >= state.pageCount;
+    refs.readerPage.replaceChildren();
+
+    const banner = createElement('div', 'page-banner');
+    banner.append(createElement('strong', '', `Halaman ${pageData.number}`));
+    const statusLabel = pageData.translationState === 'done' ? `Terjemahan ${langName(refs.targetLang.value)} siap` : pageData.translationState === 'error' ? 'Terjemahan gagal' : pageData.extractionState === 'no-text' ? 'Teks tidak terdeteksi' : 'Menunggu terjemahan';
+    banner.append(createElement('span', '', statusLabel));
+    refs.readerPage.append(banner);
+
+    if (state.mode === 'original') {
+      const canvasWrap = createElement('div', 'original-canvas-wrap');
+      const placeholder = createElement('div', 'muted', 'Merender PDF asli…');
+      canvasWrap.append(placeholder);
+      refs.readerPage.append(canvasWrap);
+      try { await renderOriginalCanvas(canvasWrap, state.currentPage); }
+      catch (error) { canvasWrap.textContent = `Halaman PDF tidak bisa dirender: ${error.message}`; }
+      refs.readerPage.append(createPageFooter(pageData));
+      return;
+    }
+
+    if (state.mode === 'both') {
+      const dual = createElement('div', 'page-dual');
+      const originalColumn = createElement('div', 'original-column');
+      originalColumn.append(createElement('div', 'column-label', 'PDF asli'));
+      const originalCanvas = createElement('div', 'original-canvas-wrap');
+      originalCanvas.append(createElement('span', 'muted', 'Merender…'));
+      originalColumn.append(originalCanvas);
+      const translatedColumn = createElement('div', 'translated-column');
+      translatedColumn.append(createElement('div', 'column-label', `Terjemahan · ${langName(refs.targetLang.value)}`));
+      translatedColumn.append(buildTranslatedCopy(pageData));
+      dual.append(originalColumn, translatedColumn);
+      refs.readerPage.append(dual);
+      try { await renderOriginalCanvas(originalCanvas, state.currentPage); }
+      catch (error) { originalCanvas.textContent = `PDF asli gagal dirender: ${error.message}`; }
+    } else {
+      const content = createElement('div', 'page-content');
+      content.append(buildTranslatedCopy(pageData));
+      refs.readerPage.append(content);
+    }
+    refs.readerPage.append(createPageFooter(pageData));
+  }
+
+  function buildTranslatedCopy(pageData) {
+    const copy = createElement('div', 'translated-copy');
+    copy.style.setProperty('--reader-size', `${state.readerFontSize}px`);
+    if (pageData.translationState === 'done' && pageData.translatedText) {
+      copy.textContent = pageData.translatedText;
+    } else if (pageData.extractionState === 'no-text') {
+      copy.append(createElement('div', 'empty-title', 'Teks belum bisa dibaca dari PDF ini.'));
+      const paragraph = createElement('p', '', 'Halaman kemungkinan berupa scan atau gambar. Jalankan OCR untuk mengenali huruf, lalu terjemahkan kembali halaman ini.');
+      copy.append(paragraph);
+      const ocrButton = createElement('button', 'btn btn-primary', 'Kenali teks dengan OCR');
+      ocrButton.type = 'button';
+      ocrButton.addEventListener('click', () => ocrCurrentPageAndTranslate());
+      copy.append(ocrButton);
+    } else if (pageData.translationState === 'working') {
+      copy.append(createElement('div', 'empty-title', 'Sedang menerjemahkan halaman ini…'));
+      copy.append(createElement('p', '', 'Terjemahan akan muncul otomatis setelah layanan membalas.'));
+    } else if (pageData.translationState === 'error') {
+      copy.append(createElement('div', 'empty-title', 'Terjemahan halaman belum selesai.'));
+      copy.append(createElement('p', '', pageData.error || 'Periksa koneksi atau batas layanan, lalu coba lagi.'));
+      const retry = createElement('button', 'btn btn-soft', 'Coba lagi halaman ini');
+      retry.type = 'button';
+      retry.addEventListener('click', () => translateCurrentPage());
+      copy.append(retry);
+    } else if (pageData.originalText) {
+      copy.append(createElement('div', 'empty-title', 'Halaman siap diterjemahkan.'));
+      copy.append(createElement('p', '', 'Tekan “Terjemahkan halaman ini” atau mulai terjemahan seluruh buku.'));
+      const original = createElement('details');
+      const summary = createElement('summary', '', 'Lihat teks asli yang berhasil dibaca');
+      const pre = createElement('p', '', pageData.originalText);
+      pre.style.whiteSpace = 'pre-wrap';
+      original.append(summary, pre);
+      copy.append(original);
+    } else {
+      copy.append(createElement('div', 'empty-title', 'Tidak ada teks untuk ditampilkan.'));
+    }
+    return copy;
+  }
+
+  function createPageFooter(pageData) {
+    const footer = createElement('div', 'page-footer');
+    const left = pageData.extractionState === 'text' ? `Teks terdeteksi · ${pageData.originalText.length.toLocaleString('id-ID')} karakter` : pageData.extractionState === 'no-text' ? 'Tidak ada teks tertanam · coba OCR' : 'Sumber PDF';
+    footer.append(createElement('span', '', left));
+    footer.append(createElement('span', '', pageData.translationState === 'done' ? '✓ Terjemahan tersedia' : pageData.translationState === 'working' ? 'Memproses…' : 'Teks asli tetap tidak berubah'));
+    return footer;
+  }
+
+  function splitIntoChunks(text, maxLength = 420) {
+    const paragraphs = String(text).split(/\n\s*\n/);
+    const chunks = [];
+    for (const paragraph of paragraphs) {
+      const normalized = paragraph.replace(/\s*\n\s*/g, ' ').trim();
+      if (!normalized) continue;
+      let remaining = normalized;
+      let firstInParagraph = true;
+      while (remaining.length > maxLength) {
+        let cut = -1;
+        const windowText = remaining.slice(0, maxLength + 1);
+        for (const separator of ['. ', '。', '！', '？', '! ', '? ', '; ', '，', ', ', ' ']) {
+          const idx = windowText.lastIndexOf(separator);
+          if (idx > maxLength * 0.45 && idx > cut) cut = idx + (separator.length > 1 ? 1 : 0);
+        }
+        if (cut < Math.floor(maxLength * 0.35)) cut = maxLength;
+        const piece = remaining.slice(0, cut).trim();
+        if (piece) chunks.push({ text: piece, paragraphStart: firstInParagraph });
+        firstInParagraph = false;
+        remaining = remaining.slice(cut).trim();
+      }
+      if (remaining) chunks.push({ text: remaining, paragraphStart: firstInParagraph });
+    }
+    return chunks;
+  }
+
+  function needsSeparator(targetCode, previousText, nextText) {
+    if (!previousText) return '';
+    if (['zh-CN', 'zh-TW', 'ja'].includes(targetCode)) return '';
+    if (/[\n\r]$/.test(previousText)) return '\n';
+    if (/^[,.;:!?，。！？；：、)]/.test(nextText)) return '';
+    return ' ';
+  }
+
+  async function wait(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+
+  async function translateText(text, from, to) {
+    const provider = refs.provider.value;
+    if (provider === 'google') {
+      const key = refs.googleKey.value.trim();
+      if (!key) throw new Error('Masukkan Google Cloud API key atau pilih mesin terjemahan gratis.');
+      const response = await fetch(`https://translation.googleapis.com/language/translate/v2?key=${encodeURIComponent(key)}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ q: text, source: from, target: to, format: 'text' })
+      });
+      let payload;
+      try { payload = await response.json(); } catch (_) { payload = {}; }
+      if (!response.ok || payload.error) throw new Error(payload?.error?.message || `Google Translation error (${response.status})`);
+      const translated = payload?.data?.translations?.[0]?.translatedText;
+      if (typeof translated !== 'string') throw new Error('Respons Google Translation tidak berisi teks terjemahan.');
+      return decodeEntities(translated);
+    }
+
+    const url = new URL('https://api.mymemory.translated.net/get');
+    url.searchParams.set('q', text);
+    url.searchParams.set('langpair', `${from}|${to}`);
+    const response = await fetch(url.toString(), { method: 'GET' });
+    let payload;
+    try { payload = await response.json(); } catch (_) { payload = {}; }
+    if (!response.ok) throw new Error(response.status === 429 ? 'Batas pemakaian layanan gratis tercapai (HTTP 429). Coba lagi nanti atau pilih Google Cloud Translation.' : `Layanan terjemahan merespons ${response.status}.`);
+    if (payload?.quotaFinished === true) {
+      throw new Error('Batas pemakaian harian MyMemory gratis sudah habis. Coba lagi besok atau pilih Google Cloud Translation.');
+    }
+    if (Number(payload.responseStatus) !== 200 || !payload?.responseData?.translatedText) {
+      const details = payload?.responseDetails || '';
+      throw new Error(String(details || 'Layanan gratis tidak menghasilkan terjemahan. Coba lagi nanti atau ganti mesin terjemahan.'));
+    }
+    return decodeEntities(payload.responseData.translatedText);
+  }
+
+  async function translatePageData(pageData) {
+    if (pageData.translationState === 'done') return pageData.translatedText;
+    if (!pageData.originalText.trim()) {
+      if (pageData.extractionState === 'no-text') throw new Error('Teks belum terdeteksi. Jalankan OCR pada halaman ini terlebih dahulu.');
+      throw new Error('Halaman ini tidak memiliki teks yang bisa diterjemahkan.');
+    }
+    const target = refs.targetLang.value;
+    const chunks = splitIntoChunks(pageData.originalText);
+    if (!chunks.length) throw new Error('Teks halaman kosong setelah dibaca.');
+    let output = '';
+    let finished = 0;
+    for (const part of chunks) {
+      if (state.cancelRequested) throw new Error('Terjemahan dihentikan oleh pengguna.');
+      if (!part.text) { output += '\n\n'; continue; }
+      const source = getSourceForText(part.text);
+      if (source === target) {
+        const separator = part.paragraphStart ? (output ? '\n\n' : '') : needsSeparator(target, output, part.text);
+        output += separator + part.text;
+      } else {
+        let translated;
+        let lastError;
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try { translated = await translateText(part.text, source, target); break; }
+          catch (error) {
+            lastError = error;
+            const message = String(error?.message || '');
+            if (attempt >= 2 || !/429|5\d\d|jaringan|network|failed to fetch/i.test(message)) break;
+            await wait((attempt + 1) * 1300);
+          }
+        }
+        if (translated === undefined) throw lastError || new Error('Terjemahan gagal.');
+        const separator = part.paragraphStart ? (output ? '\n\n' : '') : needsSeparator(target, output, translated);
+        output += separator + translated.trim();
+        await wait(refs.provider.value === 'mymemory' ? 1050 : 150);
+      }
+      finished++;
+      if (state.busy) {
+        setProgress(12 + 88 * (finished / chunks.length), `Halaman ${pageData.number}: menerjemahkan bagian ${finished}/${chunks.length}…`);
+      }
+    }
+    return output.trim();
+  }
+
+  async function translatePages(pageNumbers) {
+    if (!state.pdf || state.busy) return;
+    state.cancelRequested = false;
+    setBusy(true);
+    const uniquePageNumbers = [...new Set(pageNumbers)].filter(n => n >= 1 && n <= state.pageCount);
+    let complete = 0;
+    let failed = 0;
+    let stopped = false;
+    try {
+      for (const pageNumber of uniquePageNumbers) {
+        if (state.cancelRequested) { stopped = true; break; }
+        const pageData = state.pages[pageNumber - 1];
+        if (pageData.translationState === 'done') { complete++; continue; }
+        if (!pageData.originalText.trim()) {
+          if (pageData.extractionState === 'no-text') {
+            pageData.translationState = 'error';
+            pageData.error = 'Perlu OCR. Tekan tombol “Kenali teks dengan OCR” pada halaman ini.';
+          } else {
+            pageData.translationState = 'error';
+            pageData.error = 'Tidak ada teks yang dapat dibaca di halaman ini.';
+          }
+          failed++;
+          renderPageList();
+          continue;
+        }
+        pageData.translationState = 'working';
+        pageData.error = '';
+        renderPageList();
+        if (state.currentPage === pageNumber) await renderCurrentPage();
+        try {
+          pageData.translatedText = await translatePageData(pageData);
+          pageData.translationState = 'done';
+          pageData.sourceLanguage = getSourceForText(pageData.originalText);
+          pageData.error = '';
+          complete++;
+        } catch (error) {
+          pageData.translationState = 'error';
+          pageData.error = error?.message || 'Terjemahan gagal.';
+          if (String(pageData.error).includes('dihentikan')) stopped = true;
+          else failed++;
+          if (stopped) break;
+        }
+        renderPageList();
+        if (state.currentPage === pageNumber) await renderCurrentPage();
+        setProgress(12 + 88 * (complete / Math.max(1, uniquePageNumbers.length)), `Selesai ${complete}/${uniquePageNumbers.length} halaman${failed ? ` · ${failed} gagal/perlu OCR` : ''}…`);
+      }
+      const doneTotal = state.pages.filter(page => page.translationState === 'done').length;
+      const needsOcr = state.pages.filter(page => page.extractionState === 'no-text').length;
+      refs.downloadBtn.disabled = doneTotal === 0;
+      if (stopped || state.cancelRequested) {
+        setProgress(doneTotal / Math.max(1, state.pageCount) * 100, `Dihentikan · ${doneTotal} halaman telah diterjemahkan.`);
+        showNotice(`Proses dihentikan. ${doneTotal} halaman sudah diterjemahkan. Kamu bisa melanjutkan nanti; halaman yang selesai tidak perlu diterjemahkan ulang.`, false, true);
+      } else if (failed > 0 || needsOcr > 0) {
+        setProgress(doneTotal / Math.max(1, state.pageCount) * 100, `${doneTotal}/${state.pageCount} halaman diterjemahkan.`);
+        showNotice(`${doneTotal} halaman selesai. ${failed} halaman gagal/perlu diperiksa.${needsOcr ? ` Ada ${needsOcr} halaman tanpa teks tertanam; jalankan OCR per halaman scan, lalu terjemahkan halaman itu lagi.` : ''}`, true);
+      } else {
+        setProgress(100, `Selesai · ${doneTotal} halaman siap dibaca.`);
+        showNotice(`Selesai! ${doneTotal} halaman diterjemahkan. Gunakan mode “Asli + terjemahan” untuk memeriksa hasil berdampingan dengan halaman PDF asli.`, false, true);
+      }
+      renderPageList();
+      await renderCurrentPage();
+    } finally {
+      setBusy(false);
+      refs.translateBtn.disabled = !state.pdf;
+      refs.translatePageBtn.disabled = !state.pdf;
+      refs.stopBtn.disabled = true;
+    }
+  }
+
+  async function translateCurrentPage() {
+    if (!state.pdf || state.busy) return;
+    await translatePages([state.currentPage]);
+  }
+
+  function ocrLanguageForSelection() {
+    const src = refs.sourceLang.value;
+    if (src === 'zh-CN') return 'chi_sim';
+    if (src === 'zh-TW') return 'chi_tra';
+    if (src === 'en') return 'eng';
+    if (src === 'id') return 'ind';
+    if (src === 'ja') return 'jpn';
+    if (src === 'ko') return 'kor';
+    if (src === 'vi') return 'vie';
+    if (src === 'th') return 'tha';
+    return 'chi_sim+eng';
+  }
+
+  async function getOcrWorker() {
+    if (!window.Tesseract) {
+      await new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+        script.crossOrigin = 'anonymous';
+        script.onload = resolve;
+        script.onerror = () => reject(new Error('Pustaka OCR tidak bisa dimuat. Periksa internet dan coba lagi.'));
+        document.head.appendChild(script);
+      });
+    }
+    const language = ocrLanguageForSelection();
+    if (state.ocrWorker && state.ocrLanguage === language) return state.ocrWorker;
+    if (state.ocrWorker) {
+      try { await state.ocrWorker.terminate(); } catch (_) { /* noop */ }
+      state.ocrWorker = null;
+    }
+    showNotice(`Menyiapkan OCR (${language}). Data bahasa mungkin perlu diunduh pertama kali; proses bisa memakan waktu.`, false);
+    state.ocrWorker = await window.Tesseract.createWorker(language, 1, { logger: (message) => {
+      if (message.status === 'recognizing text') setProgress(10 + (message.progress || 0) * 60, `OCR mengenali teks… ${Math.round((message.progress || 0) * 100)}%`);
+      else if (message.status) refs.statusText.textContent = `OCR: ${message.status}…`;
+    }});
+    state.ocrLanguage = language;
+    return state.ocrWorker;
+  }
+
+  async function ocrPage(pageNumber) {
+    const page = await state.pdf.getPage(pageNumber);
+    const viewport = page.getViewport({ scale: 2.1 });
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.floor(viewport.width);
+    canvas.height = Math.floor(viewport.height);
+    const context = canvas.getContext('2d', { alpha: false });
+    context.fillStyle = '#fff';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    await page.render({ canvasContext: context, viewport, background: '#ffffff' }).promise;
+    const worker = await getOcrWorker();
+    const result = await worker.recognize(canvas);
+    const text = result?.data?.text?.trim() || '';
+    if (!text) throw new Error('OCR tidak menemukan teks. Coba PDF dengan resolusi lebih tinggi atau pilih bahasa sumber secara manual.');
+    return text;
+  }
+
+  async function ocrCurrentPageAndTranslate() {
+    if (!state.pdf || state.busy) return;
+    const pageData = state.pages[state.currentPage - 1];
+    if (pageData.extractionState !== 'no-text' && pageData.originalText.trim()) {
+      const confirmed = window.confirm('Halaman ini sudah memiliki teks tertanam. OCR akan mengganti teks hasil ekstraksi pada halaman ini. Lanjutkan?');
+      if (!confirmed) return;
+    }
+    state.cancelRequested = false;
+    setBusy(true);
+    try {
+      setProgress(10, `Menjalankan OCR halaman ${pageData.number}…`);
+      const text = await ocrPage(pageData.number);
+      pageData.originalText = text;
+      pageData.extractionState = 'ocr';
+      pageData.translationState = 'pending';
+      pageData.translatedText = '';
+      pageData.error = '';
+      renderPageList();
+      await renderCurrentPage();
+      setProgress(75, `OCR selesai pada halaman ${pageData.number}; menerjemahkan…`);
+      try {
+        pageData.translationState = 'working';
+        await renderCurrentPage();
+        pageData.translatedText = await translatePageData(pageData);
+        pageData.translationState = 'done';
+        pageData.sourceLanguage = getSourceForText(pageData.originalText);
+        pageData.error = '';
+        refs.downloadBtn.disabled = false;
+        showNotice(`OCR dan terjemahan halaman ${pageData.number} selesai. Periksa karakter hasil OCR, terutama angka dan rumus.`, false, true);
+        setProgress(100, `Halaman ${pageData.number} selesai diterjemahkan.`);
+      } catch (error) {
+        pageData.translationState = 'error';
+        pageData.error = error.message;
+        showNotice(`OCR berhasil, tetapi terjemahan gagal: ${error.message}`, true);
+      }
+      renderPageList();
+      await renderCurrentPage();
+    } catch (error) {
+      showNotice(`OCR gagal: ${error?.message || 'error tidak diketahui'}`, true);
+      showToast(error?.message || 'OCR gagal.', 'error', 6500);
+    } finally {
+      setBusy(false);
+      refs.translateBtn.disabled = !state.pdf;
+      refs.translatePageBtn.disabled = !state.pdf;
+    }
+  }
+
+  function downloadTranslation() {
+    if (!state.pdf || !state.pages.some(page => page.translationState === 'done')) return;
+    const out = [];
+    out.push(state.fileName.replace(/\.pdf$/i, ''));
+    out.push(`Terjemahan: ${langName(refs.sourceLang.value === 'auto' ? 'auto' : refs.sourceLang.value)} → ${langName(refs.targetLang.value)}`);
+    out.push('Catatan: tata letak teks dapat berubah; periksa PDF asli untuk rumus, tabel, dan diagram.');
+    out.push('');
+    for (const page of state.pages) {
+      out.push(`===== HALAMAN ${page.number} =====`);
+      if (page.translationState === 'done') out.push(page.translatedText);
+      else if (page.extractionState === 'no-text') out.push('[Belum diterjemahkan: halaman scan, jalankan OCR.]');
+      else if (page.translationState === 'error') out.push(`[Belum diterjemahkan: ${page.error || 'gagal'}]`);
+      else out.push('[Belum diterjemahkan]');
+      out.push('');
+    }
+    const blob = new Blob(['\ufeff' + out.join('\n')], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${state.fileName.replace(/\.pdf$/i, '')}-terjemahan-${refs.targetLang.value}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+  }
+
+  refs.chooseFileBtn.addEventListener('click', (event) => { event.stopPropagation(); refs.fileInput.click(); });
+  refs.dropzone.addEventListener('click', (event) => { if (!event.target.closest('button')) refs.fileInput.click(); });
+  refs.dropzone.addEventListener('keydown', (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); refs.fileInput.click(); } });
+  refs.fileInput.addEventListener('change', (event) => { const file = event.target.files?.[0]; if (file) loadPDF(file); event.target.value = ''; });
+  ['dragenter', 'dragover'].forEach(name => refs.dropzone.addEventListener(name, event => { event.preventDefault(); refs.dropzone.classList.add('dragover'); }));
+  ['dragleave', 'drop'].forEach(name => refs.dropzone.addEventListener(name, event => { event.preventDefault(); refs.dropzone.classList.remove('dragover'); }));
+  refs.dropzone.addEventListener('drop', event => { const file = event.dataTransfer?.files?.[0]; if (file) loadPDF(file); });
+  refs.removeFileBtn.addEventListener('click', closeCurrentBook);
+  refs.translateBtn.addEventListener('click', () => translatePages(state.pages.map(page => page.number)));
+  refs.translatePageBtn.addEventListener('click', translateCurrentPage);
+  refs.stopBtn.addEventListener('click', () => { state.cancelRequested = true; refs.stopBtn.disabled = true; refs.statusText.textContent = 'Menghentikan setelah bagian yang sedang berjalan…'; });
+  refs.downloadBtn.addEventListener('click', downloadTranslation);
+  refs.prevPageBtn.addEventListener('click', () => goToPage(state.currentPage - 1));
+  refs.nextPageBtn.addEventListener('click', () => goToPage(state.currentPage + 1));
+  refs.swapLangBtn.addEventListener('click', () => {
+    const from = refs.sourceLang.value;
+    if (from === 'auto') { showToast('Pilih bahasa sumber tertentu dahulu sebelum ditukar.', ''); return; }
+    const to = refs.targetLang.value;
+    refs.sourceLang.value = to;
+    refs.targetLang.value = from;
+    if (state.pdf) showToast('Bahasa berubah. Terjemahan lama tidak dihapus; terjemahkan ulang jika perlu.');
+  });
+  refs.provider.addEventListener('change', () => {
+    refs.googleKeyWrap.classList.toggle('hidden', refs.provider.value !== 'google');
+    if (refs.provider.value === 'google') showNotice('Google Cloud Translation memerlukan API key aktif dan biasanya perlu billing. Key hanya disimpan sementara di formulir browser, tetapi akan terlihat dalam permintaan jaringan.', false);
+    else showNotice('MyMemory gratis tidak memerlukan API key, tetapi mempunyai batas pemakaian dan hasilnya mungkin perlu diperiksa.', false);
+  });
+  document.querySelectorAll('.mode-btn').forEach(button => button.addEventListener('click', async () => {
+    document.querySelectorAll('.mode-btn').forEach(other => other.classList.toggle('active', other === button));
+    state.mode = button.dataset.mode;
+    await renderCurrentPage();
+  }));
+  refs.fontDownBtn.addEventListener('click', () => { state.readerFontSize = Math.max(13, state.readerFontSize - 1); document.documentElement.style.setProperty('--reader-size', `${state.readerFontSize}px`); renderCurrentPage(); });
+  refs.fontUpBtn.addEventListener('click', () => { state.readerFontSize = Math.min(26, state.readerFontSize + 1); document.documentElement.style.setProperty('--reader-size', `${state.readerFontSize}px`); renderCurrentPage(); });
+  window.addEventListener('resize', () => { if (state.pdf && state.mode !== 'translated') renderCurrentPage(); });
+
+})();
+</script>
+</body>
+</html>
